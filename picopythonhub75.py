@@ -80,13 +80,12 @@ while(True):
         sm_data.put(toggle)
     #sm_data.put(0)
     counter = counter +1
-    if (counter > 15): counter = 0
-    
-    if toggle == 0xffffffff:
-        toggle = 0x00000000
-    else:
-        toggle = 0xffffffff
+    if (counter > 15):
+        counter = 0
+        if toggle == 0xffffffff:
+            toggle = 0x00000000
+        else:
+            toggle = 0xffffffff
     #time.sleep(1)
     #output 192 bits of data
     #repeat
-    
