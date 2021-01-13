@@ -218,15 +218,45 @@ def light_xy(x,y, r, g, b):
         row, col = rejig(x, y, 68, 69)
     set_pixel(row, col, r, g, b)
     
-#missing row 19?
-#light_xy(1,0,1,0,0)
-
-#for i in range(32):
-#    light_xy(17, i, 1, 0, 0)
+#p-shape
+#should these really be stored as datapoints?
+def p_draw(init_x, init_y, r, g, b):
+    #line 10 pixels high
+    for i in range(10):
+        light_xy(init_x, init_y+i, r, g, b)
+    #line 4 pixesl across
+    for i in range(4):
+        light_xy(init_x+i, init_y, r, g, b)
+    for i in range(4):
+        light_xy(init_x+i, init_y+4, r, g, b)
+    for i in range(3):
+        light_xy(init_x+4, init_y+i+1, r, g, b)
+        
+def i_draw(init_x, init_y, r, g, b):
+    for i in range(4):
+        light_xy(init_x, init_y+i+2, r, g, b)
+    light_xy(init_x, init_y, r, g, b)
     
-#for i in range(32):
-#    for j in range(32):
-#        light_xy(j, i, 1, 0, 0)
+def c_draw(init_x, init_y, r, g, b):
+    for i in range(4):
+        light_xy(init_x, init_y+i+1, r, g, b)
+    for i in range(3):
+        light_xy(init_x+1+i, init_y, r, g, b)
+        light_xy(init_x+1+i, init_y+5, r, g, b)
+        
+def o_draw(init_x, init_y, r, g, b):
+    for i in range(4):
+        light_xy(init_x, init_y+i+1, r, g, b)
+        light_xy(init_x+4, init_y+i+1, r, g, b)
+    for i in range(3):
+        light_xy(init_x+1+i, init_y, r, g, b)
+        light_xy(init_x+1+i, init_y+5, r, g, b)
+    
+        
+p_draw(3, 10, 0, 1, 0)
+i_draw(9, 14, 0, 1, 0)
+c_draw(11, 14, 0, 1, 0)
+o_draw(16, 14, 0, 1, 0)
 
 while(True):
     #select row -- not sure how to interleave. Work this out later
