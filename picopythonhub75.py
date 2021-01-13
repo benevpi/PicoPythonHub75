@@ -3,6 +3,7 @@ import time
 from machine import Pin
 import array
 import math
+import _thread
 #TODO
 #* work out how to place pixels in different places
 #* buffering??
@@ -39,16 +40,16 @@ def row_hub75():
     wrap_target()
     pull()
     
-    nop()     .side(2) [2]
+    nop()     .side(2) 
     out(pins, 5)   [2]#note 3 as only three pins needed for 32x32 screen. This might be wrong. Might needs all five still
-    nop()      .side(3) [2]
-    nop()      .side(2) [2]
-    nop()      .side(0) [2]
+    nop()      .side(3) #this triggers the latch
+    nop()      .side(2) #this disables the latch
+    nop()      .side(0) 
     
 
 #setup state machines
 #can I run them at full tilt, or do they need slowing down?
-sm_data = rp2.StateMachine(0,data_hub75, out_base=Pin(data_pin_start), sideset_base=Pin(clock_pin), freq=1000000)
+sm_data = rp2.StateMachine(0,data_hub75, out_base=Pin(data_pin_start), sideset_base=Pin(clock_pin), freq=55000000)
 sm_row = rp2.StateMachine(1, row_hub75, out_base=Pin(row_pin_start),sideset_base=Pin(latch_pin_start), freq=1000000)
 
 #note - L is unsigned long - 32 bits. 
@@ -111,32 +112,7 @@ def set_pixel(row, col, red, green, blue):
 
 #odd numbers for columns causing problems
 
-for i in range(num_rows):
-    for j in range(blocks_per_row*8):
-        if j==125:
-            #set_pixel(i,j,1,0,0)
-            pass
 
-#not even avove, 102, 103, 108, 109, 110, 111, 116, 117, 118, 119
-#why do some pixels not exist? e.g. 0,98 / 10,10
-#is it any col less than 100? no
-    #yes
-    #no there's 128 pixels under 100 that do light up
-    #1,93 exists
-    #93 exists with all odd rows
-    #92 exists with even1rows
-    #87?
-    #86 exists with even rows
-    #85 exists with odd rows
-    #84 exists with even rows
-    #79 exists with odd rows
-    #78 exists with even rows
-    #77 exists with odd rows
-    #76 exists with even rows
-    #71 exists with odd rows
-    #70 exists with even rows
-    #69 exists with odd rows
-    #68 exists with even rows
         
 def rejig(x, y, even_col, odd_col):
     if x > 15: x=x+1
@@ -154,67 +130,67 @@ def light_xy(x,y, r, g, b):
     #I'm sure there's a better way to do this. What am I missing?
     if y == 31:
         row, col = rejig(x, y, 190, 191)
-    if y == 30:
+    elif y == 30:
         row, col = rejig(x, y, 188, 189)
-    if y == 29:
+    elif y == 29:
         row, col = rejig(x, y, 182, 183)
-    if y == 28:
+    elif y == 28:
         row, col = rejig(x, y, 180, 181)
-    if y == 27:
+    elif y == 27:
         row, col = rejig(x, y, 174, 175)
-    if y == 26:
+    elif y == 26:
         row, col = rejig(x, y, 172, 173)
-    if y == 25:
+    elif y == 25:
         row, col = rejig(x, y, 166, 167)
-    if y == 24:
+    elif y == 24:
         row, col = rejig(x, y, 164, 165)
-    if y == 23:
+    elif y == 23:
         row, col = rejig(x, y, 158, 159)
-    if y == 22:
+    elif y == 22:
         row, col = rejig(x, y, 156, 157)
-    if y == 21:
+    elif y == 21:
         row, col = rejig(x, y, 150, 151)
-    if y == 20:
+    elif y == 20:
         row, col = rejig(x, y, 148, 149)
-    if y == 19:
+    elif y == 19:
         row, col = rejig(x, y, 142, 143)
-    if y == 18:
+    elif y == 18:
         row, col = rejig(x, y, 140, 141)
-    if y == 17:
+    elif y == 17:
         row, col = rejig(x, y, 134, 135)
-    if y == 16:
+    elif y == 16:
         row, col = rejig(x, y, 132, 133)
-    if y == 15:
+    elif y == 15:
         row, col = rejig(x, y, 126, 127)
-    if y == 14:
+    elif y == 14:
         row, col = rejig(x, y, 124, 125)
-    if y == 13:
+    elif y == 13:
         row, col = rejig(x, y, 118, 119)
-    if y == 12:
+    elif y == 12:
         row, col = rejig(x, y, 116, 117)  
-    if y == 11:
+    elif y == 11:
         row, col = rejig(x, y, 110, 111)        
-    if y == 10:
+    elif y == 10:
         row, col = rejig(x, y, 108, 109)
-    if y == 9:
+    elif y == 9:
         row, col = rejig(x,y, 102, 103)
-    if y == 8:
+    elif y == 8:
         row, col = rejig(x, y, 100, 101)
-    if y == 7:
+    elif y == 7:
         row, col = rejig(x, y, 94, 95)
-    if y == 6:
+    elif y == 6:
         row, col = rejig(x, y, 92, 93)
-    if y == 5:
+    elif y == 5:
         row, col = rejig(x, y, 86, 87)
-    if y == 4:
+    elif y == 4:
         row, col = rejig(x, y, 84, 85)
-    if y == 3:
+    elif y == 3:
         row, col = rejig(x, y, 78, 79)
-    if y == 2:
+    elif y == 2:
         row, col = rejig(x, y, 76, 77)
-    if y == 1:
+    elif y == 1:
         row, col = rejig(x, y, 70, 71)
-    if y == 0:
+    elif y == 0:
         row, col = rejig(x, y, 68, 69)
     set_pixel(row, col, r, g, b)
     
@@ -251,49 +227,56 @@ def o_draw(init_x, init_y, r, g, b):
     for i in range(3):
         light_xy(init_x+1+i, init_y, r, g, b)
         light_xy(init_x+1+i, init_y+5, r, g, b)
-    
-        
-p_draw(3, 10, 0, 1, 0)
-i_draw(9, 14, 0, 1, 0)
-c_draw(11, 14, 0, 1, 0)
-o_draw(16, 14, 0, 1, 0)
 
+text_y = 14
+direction = 1
+
+def draw_text():
+    global text_y
+    global direction
+    global writing
+    global current_rows
+    global rows
+    
+    writing = True
+    text_y = text_y + direction
+    if text_y > 20: direction = -1
+    if text_y < 5: direction = 1
+
+    rows = [0]*num_rows
+
+    #fill with black
+    for j in range(num_rows):
+        rows[j] = [0]*blocks_per_row
+            
+    p_draw(3, text_y-4, 1, 1, 1)
+    i_draw(9, text_y, 1, 1, 0)
+    c_draw(11, text_y, 0, 1, 1)
+    o_draw(16, text_y, 1, 0, 1)
+    writing = False
+    
+draw_text()
+draw_counter = 0
+
+#going to need double-buffering
+
+writing = False
+
+out_rows = rows
+
+    
 while(True):
-    #select row -- not sure how to interleave. Work this out later
-    #a_rows[0]=0xffff # this isn't working on either 0 or 1?
-    #print("looping")
-    #(100u * (1u << bit) << 5))
+
     sm_row.put(counter)
-    #print("row selected")
-    #time.sleep(0.0001)
-    
-    if not toggle:
-        for i in range(blocks_per_row):
-            sm_data.put(rows[counter][i])
-            #sm_data.put(0x00000000)
-        #for i in range(blocks_per_row):
-        #    sm_data.put(rows[counter][i])
-    else:
-        for i in range(blocks_per_row):
-           sm_data.put(0x00000000)
-    #sm_data.put(0x00000000)
-        
-        
-    #sm_data.put(a_data)
-    '''
-    for x in range(4):
-        sm_data.put(toggle)
-        sm_data.put(toggle)
-    '''
-    #sm_data.put(0)
+
+    for i in range(blocks_per_row):
+        sm_data.put(out_rows[counter][i])
+
     counter = counter +1
-    if (counter > (num_rows-1)):
+    if (counter > 15):
         counter = 0
-        if toggle:
-            toggle = False
-        else:
-            toggle = False
-    #time.sleep(1)
-    #output 192 bits of data
-    #repeat
+        if writing == False:
+            out_rows = rows
+            _thread.start_new_thread(draw_text, ())
     
+
