@@ -276,7 +276,7 @@ while(True):
     if (counter > 15):
         counter = 0
         if writing == False:
-            out_rows = rows
+            out_rows = rows.copy()
             _thread.start_new_thread(draw_text, ())
     
 
