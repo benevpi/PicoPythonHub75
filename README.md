@@ -2,6 +2,8 @@
 
 Hub75 LED panels are an affordable way of adding lots of colourful lights to a build. This project shows you how to control a 32x32 RGB LED panel using MicroPython. Pico’s PIO lets you output data fast enough for smooth animations.
 
+![Hub75 in action](https://github.com/benevpi/PicoPythonHub75/blob/main/IMG_20210119_122102321.jpg)
+
 PIO handles both the addressing and the outputting of data. 
 
 If you want to change the animation, you just need to change the draw_text() method. Currently it's:
