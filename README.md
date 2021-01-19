@@ -4,7 +4,48 @@ Hub75 LED panels are an affordable way of adding lots of colourful lights to a b
 
 ![Hub75 in action](https://github.com/benevpi/PicoPythonHub75/blob/main/IMG_20210119_122102321.jpg)
 
-PIO handles both the addressing and the outputting of data. 
+PIO handles both the addressing and the outputting of data. At the moment, this works on 32x32 LED screens. In principle, it should work on other sizes, but you'll need to sort out the addressing. Actually, the addressing is a bit of a mess. It works, but I don't think it works in the right way -- if you're familiar with hub75 addressing and can see where I've gone wrong, I'd appreciate a pointer in the write direction.
+
+HUB75E Pinout:
+
+```
+    /-----\
+R0  | o o | G0
+B0  | o o | GND
+R1  | o o | G1
+B1  \ o o | E
+A   / o o | B
+C   | o o | D
+CLK | o o | STB
+OEn | o o | GND
+    \-----/
+```
+
+Wiring:
+
+```
+Must be contiguous, in order:
+R0 - GPIO0
+G0 - GPIO1
+B0 - GPIO2
+R1 - GPIO3
+G1 - GPIO4
+B1 - GPIO5
+
+Must be contiguous, somewhat ok to change order:
+A - GPIO6
+B - GPIO7
+C - GPIO8
+D - GPIO9
+E - GPIO10
+
+Can be anywhere:
+CLK - GPIO16
+
+Must be contiguous, in order:
+STB - GPIO12
+OEn - GPIO13
+```
 
 If you want to change the animation, you just need to change the draw_text() method. Currently it's:
 
