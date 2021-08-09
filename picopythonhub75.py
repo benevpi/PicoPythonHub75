@@ -18,7 +18,7 @@ data_bits = 192 # note must be divisible by 32
 
 row_ar_len = 50
 
-@rp2.asm_pio(out_shiftdir=1, autopull=True, pull_thresh=24, out_init=(rp2.PIO.OUT_HIGH, rp2.PIO.OUT_LOW, rp2.PIO.OUT_HIGH,
+@rp2.asm_pio(out_shiftdir=1, autopull=True, pull_thresh=12, out_init=(rp2.PIO.OUT_HIGH, rp2.PIO.OUT_LOW, rp2.PIO.OUT_HIGH,
                                                                     rp2.PIO.OUT_HIGH, rp2.PIO.OUT_HIGH, rp2.PIO.OUT_HIGH), sideset_init=(rp2.PIO.OUT_LOW))
 def data_hub75():
     #pull # actually, can I use autopull?
@@ -29,8 +29,12 @@ def data_hub75():
     #wrap_target()
     
     #nop() .side(0)
-    out(pins, 6) .side(1)
-    out(pins, 6) .side(0)
+    out(pins, 6)
+    nop()        .side(1)
+    nop()        .side(0)
+    out(pins, 6)
+    nop()        .side(1)
+    nop()        .side(0)
     #wrap()
     
 @rp2.asm_pio(out_shiftdir=1, autopull=False,out_init=(rp2.PIO.OUT_LOW,rp2.PIO.OUT_LOW,rp2.PIO.OUT_LOW,
@@ -264,13 +268,40 @@ writing = False
 
 out_rows = rows
 
+def draw_test_pattern():
+    global writing
+    global rows
+
+    writing = True
+
+    rows = [0]*num_rows
+
+    #fill with black
+    for j in range(num_rows):
+        rows[j] = [0]*blocks_per_row
+
+    slow = False
+    for i in range(0,32):
+        # draw random selection of rows/colums using all colors
+        light_xy(i, 20, 0, 0, 1)
+        light_xy(i, 1, 0, 1, 0)
+        light_xy(i, 30, 0, 1, 1)
+        light_xy(0, i, 1, 0, 0)
+        light_xy(5, i, 1, 0, 1)
+        light_xy(15, i, 1, 1, 0)
+        light_xy(25, i, 1, 1, 1)
+        light_xy(30, i, 1, 0, 0)
+
+    writing = False
+
     
 while(True):
 
     sm_row.put(counter)
 
-    for i in range(blocks_per_row):
-        sm_data.put(out_rows[counter][i])
+    # Write out 16 integers that hold 4 pixels worth of 3-bit RGB (two scanlines x two pixels)
+    for i in range(blocks_per_row - 8):
+        sm_data.put(out_rows[counter][i + 8] >> 12)
 
     counter = counter +1
     if (counter > 15):
