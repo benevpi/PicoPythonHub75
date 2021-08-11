@@ -18,7 +18,7 @@ data_bits = 192 # note must be divisible by 32
 
 row_ar_len = 50
 
-@rp2.asm_pio(out_shiftdir=1, autopull=True, pull_thresh=12, out_init=(rp2.PIO.OUT_HIGH, rp2.PIO.OUT_LOW, rp2.PIO.OUT_HIGH,
+@rp2.asm_pio(out_shiftdir=1, autopull=True, pull_thresh=24, out_init=(rp2.PIO.OUT_HIGH, rp2.PIO.OUT_LOW, rp2.PIO.OUT_HIGH,
                                                                     rp2.PIO.OUT_HIGH, rp2.PIO.OUT_HIGH, rp2.PIO.OUT_HIGH), sideset_init=(rp2.PIO.OUT_LOW))
 def data_hub75():
     #pull # actually, can I use autopull?
@@ -29,6 +29,12 @@ def data_hub75():
     #wrap_target()
     
     #nop() .side(0)
+    out(pins, 6)
+    nop()        .side(1)
+    nop()        .side(0)
+    out(pins, 6)
+    nop()        .side(1)
+    nop()        .side(0)
     out(pins, 6)
     nop()        .side(1)
     nop()        .side(0)
@@ -78,7 +84,7 @@ toggle = False
 #data is sequential rgb bits
 
 rows = []
-blocks_per_row = 24 #each block has 24 bits, so 8 pixels
+blocks_per_row = 8 #each block has 24 bits, so 4 pixels x 2 scanlines
 num_rows = 16
 
 #fill with white
@@ -95,108 +101,27 @@ for j in range(num_rows):
     for i in range(blocks_per_row):
         rows[j].append(0x00000000)
 
-#let's light up an individual pixel
-#each block has (I think) 8 pixels (with rgb values for each)
-#each'row' has 64 pixels
-        
-#there are 32x32 pixels, so our data size needs to match this.
-# if there are only 12 'rows', then each row has to be 86-ish pixels long
-# (do I need dummy pixels to make rows the right lenght?
-# this is 11 'blocks'
-def set_pixel(row, col, red, green, blue):
-    block = math.floor(col/8) # 8 is number of pixes in block (24 bits)
-    block_posn = col%8
-    #set red
-    rows[row][block] = rows[row][block] | red << (block_posn * 3)
-    #set green
-    rows[row][block] = rows[row][block] | (green << (block_posn * 3)+1)
-    #set blue
-    rows[row][block] = rows[row][block] | (blue << (block_posn * 3)+2)
+# There are 32x32 3-bit values for each panel.
+# Pins r1g1b1 control scanlines 0-15 while pins r2g2b2 control scanlines 16-31
+# We want to write 24-bits at a time so we can write out 4 pixels per scanline at a time
+# 1st pixel 0th scanline would be the lowest bits (0-2)
+# 1st pixel 16th scanline would be the next bits (3-5)
+# 2nd pixel 0th scanline would be the next lowest bits (6-8)
+# 2nd pixel 16th scanline would be the next lowest bits (9-11)
+# continue this pattern to fill our 24-bits
 
+def set_pixel(x, y, red, green, blue):
 
-#odd numbers for columns causing problems
+    bit_posn = ((x % 4)) * 6
+    if y > 15:
+        y = y - 16
+        bit_posn += 3
 
-
-        
-def rejig(x, y, even_col, odd_col):
-    if x > 15: x=x+1
-    flip_x = 32-x
-    if flip_x < 17:
-        col = even_col
-        row = flip_x-1
-    else:
-        col = odd_col
-        row = flip_x-16-2
-    return row, col
-    
+    rgb = (red << 0) | (green << 1) | (blue << 2);
+    rows[y - 1][int(x / 4)] |= rgb << (bit_posn)
         
 def light_xy(x,y, r, g, b):
-    #I'm sure there's a better way to do this. What am I missing?
-    if y == 31:
-        row, col = rejig(x, y, 190, 191)
-    elif y == 30:
-        row, col = rejig(x, y, 188, 189)
-    elif y == 29:
-        row, col = rejig(x, y, 182, 183)
-    elif y == 28:
-        row, col = rejig(x, y, 180, 181)
-    elif y == 27:
-        row, col = rejig(x, y, 174, 175)
-    elif y == 26:
-        row, col = rejig(x, y, 172, 173)
-    elif y == 25:
-        row, col = rejig(x, y, 166, 167)
-    elif y == 24:
-        row, col = rejig(x, y, 164, 165)
-    elif y == 23:
-        row, col = rejig(x, y, 158, 159)
-    elif y == 22:
-        row, col = rejig(x, y, 156, 157)
-    elif y == 21:
-        row, col = rejig(x, y, 150, 151)
-    elif y == 20:
-        row, col = rejig(x, y, 148, 149)
-    elif y == 19:
-        row, col = rejig(x, y, 142, 143)
-    elif y == 18:
-        row, col = rejig(x, y, 140, 141)
-    elif y == 17:
-        row, col = rejig(x, y, 134, 135)
-    elif y == 16:
-        row, col = rejig(x, y, 132, 133)
-    elif y == 15:
-        row, col = rejig(x, y, 126, 127)
-    elif y == 14:
-        row, col = rejig(x, y, 124, 125)
-    elif y == 13:
-        row, col = rejig(x, y, 118, 119)
-    elif y == 12:
-        row, col = rejig(x, y, 116, 117)  
-    elif y == 11:
-        row, col = rejig(x, y, 110, 111)        
-    elif y == 10:
-        row, col = rejig(x, y, 108, 109)
-    elif y == 9:
-        row, col = rejig(x,y, 102, 103)
-    elif y == 8:
-        row, col = rejig(x, y, 100, 101)
-    elif y == 7:
-        row, col = rejig(x, y, 94, 95)
-    elif y == 6:
-        row, col = rejig(x, y, 92, 93)
-    elif y == 5:
-        row, col = rejig(x, y, 86, 87)
-    elif y == 4:
-        row, col = rejig(x, y, 84, 85)
-    elif y == 3:
-        row, col = rejig(x, y, 78, 79)
-    elif y == 2:
-        row, col = rejig(x, y, 76, 77)
-    elif y == 1:
-        row, col = rejig(x, y, 70, 71)
-    elif y == 0:
-        row, col = rejig(x, y, 68, 69)
-    set_pixel(row, col, r, g, b)
+    set_pixel(x, y, r, g, b)
     
 #p-shape
 #should these really be stored as datapoints?
@@ -280,7 +205,6 @@ def draw_test_pattern():
     for j in range(num_rows):
         rows[j] = [0]*blocks_per_row
 
-    slow = False
     for i in range(0,32):
         # draw random selection of rows/colums using all colors
         light_xy(i, 20, 0, 0, 1)
@@ -294,14 +218,13 @@ def draw_test_pattern():
 
     writing = False
 
-    
 while(True):
 
     sm_row.put(counter)
 
-    # Write out 16 integers that hold 4 pixels worth of 3-bit RGB (two scanlines x two pixels)
-    for i in range(blocks_per_row - 8):
-        sm_data.put(out_rows[counter][i + 8] >> 12)
+    # Write out 8 integers that hold 8 pixels worth of 3-bit RGB (two scanlines x four pixels)
+    for i in range(blocks_per_row):
+        sm_data.put(out_rows[counter][i])
 
     counter = counter +1
     if (counter > 15):
@@ -309,5 +232,4 @@ while(True):
         if writing == False:
             out_rows = rows.copy()
             _thread.start_new_thread(draw_text, ())
-    
 
