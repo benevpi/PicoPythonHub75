@@ -4,6 +4,8 @@ from machine import Pin
 import array
 import math
 import _thread
+import random
+
 #TODO
 #* work out how to place pixels in different places
 #* buffering??
@@ -29,8 +31,18 @@ def data_hub75():
     #wrap_target()
     
     #nop() .side(0)
-    out(pins, 6) .side(1)
-    out(pins, 6) .side(0)
+    out(pins, 6)
+    nop()        .side(1)
+    nop()        .side(0)
+    out(pins, 6)
+    nop()        .side(1)
+    nop()        .side(0)
+    out(pins, 6)
+    nop()        .side(1)
+    nop()        .side(0)
+    out(pins, 6)
+    nop()        .side(1)
+    nop()        .side(0)
     #wrap()
     
 @rp2.asm_pio(out_shiftdir=1, autopull=False,out_init=(rp2.PIO.OUT_LOW,rp2.PIO.OUT_LOW,rp2.PIO.OUT_LOW,
@@ -51,14 +63,6 @@ def row_hub75():
 #can I run them at full tilt, or do they need slowing down?
 sm_data = rp2.StateMachine(0,data_hub75, out_base=Pin(data_pin_start), sideset_base=Pin(clock_pin), freq=55000000)
 sm_row = rp2.StateMachine(1, row_hub75, out_base=Pin(row_pin_start),sideset_base=Pin(latch_pin_start), freq=1000000)
-
-#note - L is unsigned long - 32 bits. 
-a_rows = array.array("I", [0xffff, 0xffff]) # try and put some row data in there?
-a_data = array.array("I", [0xffff for _ in range(row_ar_len)])
-
-#test, let's make everything white (note - I have a good power supply!)
-#for i in range(row_ar_len):
-#    a_data[i] = 0x1000 # chuck some data in and work it out later
     
 sm_row.active(1)
 sm_data.active(1)
@@ -67,15 +71,17 @@ counter = 0
 
 toggle = False
 
-#data format
-#-- send data in 24-bit blocks
-# 8 24 bit blocks per 'row'
-#how many 'rows'? 15? 16?
-#data is sequential rgb bits
-
 rows = []
-blocks_per_row = 24 #each block has 24 bits, so 8 pixels
-num_rows = 16
+blocks_per_row = const(8) #each block has 24 bits, so 4 pixels x 2 scanlines
+num_rows = const(16)
+
+fast_buffer1 = array.array("I")
+fast_buffer2 = array.array("I")
+for i in range(blocks_per_row * num_rows):
+    fast_buffer1.append(0)
+    fast_buffer2.append(0)
+drawBuffer = fast_buffer1
+frameBuffer = fast_buffer2
 
 #fill with white
 '''
@@ -91,108 +97,37 @@ for j in range(num_rows):
     for i in range(blocks_per_row):
         rows[j].append(0x00000000)
 
-#let's light up an individual pixel
-#each block has (I think) 8 pixels (with rgb values for each)
-#each'row' has 64 pixels
-        
-#there are 32x32 pixels, so our data size needs to match this.
-# if there are only 12 'rows', then each row has to be 86-ish pixels long
-# (do I need dummy pixels to make rows the right lenght?
-# this is 11 'blocks'
-def set_pixel(row, col, red, green, blue):
-    block = math.floor(col/8) # 8 is number of pixes in block (24 bits)
-    block_posn = col%8
-    #set red
-    rows[row][block] = rows[row][block] | red << (block_posn * 3)
-    #set green
-    rows[row][block] = rows[row][block] | (green << (block_posn * 3)+1)
-    #set blue
-    rows[row][block] = rows[row][block] | (blue << (block_posn * 3)+2)
+# There are 32x32 3-bit values for each panel.
+# Pins r1g1b1 control scanlines 0-15 while pins r2g2b2 control scanlines 16-31
+# We want to write 24-bits at a time so we can write out 4 pixels per scanline at a time
+# 1st pixel 0th scanline would be the lowest bits (0-2)
+# 1st pixel 16th scanline would be the next bits (3-5)
+# 2nd pixel 0th scanline would be the next lowest bits (6-8)
+# 2nd pixel 16th scanline would be the next lowest bits (9-11)
+# continue this pattern to fill our 24-bits
 
+@micropython.viper
+def set_pixel(x:int, y:int, rgb:uint):
 
-#odd numbers for columns causing problems
-
-
-        
-def rejig(x, y, even_col, odd_col):
-    if x > 15: x=x+1
-    flip_x = 32-x
-    if flip_x < 17:
-        col = even_col
-        row = flip_x-1
+    bit_posn = ((x % 4) * 6)
+    if y > 15:
+        y = y - 17
+        bit_posn += 3
     else:
-        col = odd_col
-        row = flip_x-16-2
-    return row, col
-    
+        y = y - 1
+
+    # a mystery but rows 0/16 need to use y = 15 to be drawn correctly
+    if y == -1:
+        y = 15
+
+    index = y * blocks_per_row + int(x >> 2)
+    val = uint(drawBuffer[index])
+
+    drawBuffer[index] = val | uint(rgb << (bit_posn))
         
 def light_xy(x,y, r, g, b):
-    #I'm sure there's a better way to do this. What am I missing?
-    if y == 31:
-        row, col = rejig(x, y, 190, 191)
-    elif y == 30:
-        row, col = rejig(x, y, 188, 189)
-    elif y == 29:
-        row, col = rejig(x, y, 182, 183)
-    elif y == 28:
-        row, col = rejig(x, y, 180, 181)
-    elif y == 27:
-        row, col = rejig(x, y, 174, 175)
-    elif y == 26:
-        row, col = rejig(x, y, 172, 173)
-    elif y == 25:
-        row, col = rejig(x, y, 166, 167)
-    elif y == 24:
-        row, col = rejig(x, y, 164, 165)
-    elif y == 23:
-        row, col = rejig(x, y, 158, 159)
-    elif y == 22:
-        row, col = rejig(x, y, 156, 157)
-    elif y == 21:
-        row, col = rejig(x, y, 150, 151)
-    elif y == 20:
-        row, col = rejig(x, y, 148, 149)
-    elif y == 19:
-        row, col = rejig(x, y, 142, 143)
-    elif y == 18:
-        row, col = rejig(x, y, 140, 141)
-    elif y == 17:
-        row, col = rejig(x, y, 134, 135)
-    elif y == 16:
-        row, col = rejig(x, y, 132, 133)
-    elif y == 15:
-        row, col = rejig(x, y, 126, 127)
-    elif y == 14:
-        row, col = rejig(x, y, 124, 125)
-    elif y == 13:
-        row, col = rejig(x, y, 118, 119)
-    elif y == 12:
-        row, col = rejig(x, y, 116, 117)  
-    elif y == 11:
-        row, col = rejig(x, y, 110, 111)        
-    elif y == 10:
-        row, col = rejig(x, y, 108, 109)
-    elif y == 9:
-        row, col = rejig(x,y, 102, 103)
-    elif y == 8:
-        row, col = rejig(x, y, 100, 101)
-    elif y == 7:
-        row, col = rejig(x, y, 94, 95)
-    elif y == 6:
-        row, col = rejig(x, y, 92, 93)
-    elif y == 5:
-        row, col = rejig(x, y, 86, 87)
-    elif y == 4:
-        row, col = rejig(x, y, 84, 85)
-    elif y == 3:
-        row, col = rejig(x, y, 78, 79)
-    elif y == 2:
-        row, col = rejig(x, y, 76, 77)
-    elif y == 1:
-        row, col = rejig(x, y, 70, 71)
-    elif y == 0:
-        row, col = rejig(x, y, 68, 69)
-    set_pixel(row, col, r, g, b)
+    rgb = (r << 0) | (g << 1) | (b << 2);
+    set_pixel(x, y, rgb)
     
 #p-shape
 #should these really be stored as datapoints?
@@ -228,6 +163,15 @@ def o_draw(init_x, init_y, r, g, b):
         light_xy(init_x+1+i, init_y, r, g, b)
         light_xy(init_x+1+i, init_y+5, r, g, b)
 
+def clearBuffer():
+    # reusing should be same or faster than reallocations
+    #for j in range(num_rows):
+    #    for i in range(blocks_per_row):
+    #        rows[j][i] = 0
+
+    for i in range(num_rows * blocks_per_row):
+         drawBuffer[i] = 0
+
 text_y = 14
 direction = 1
 
@@ -243,11 +187,7 @@ def draw_text():
     if text_y > 20: direction = -1
     if text_y < 5: direction = 1
 
-    rows = [0]*num_rows
-
-    #fill with black
-    for j in range(num_rows):
-        rows[j] = [0]*blocks_per_row
+    clearBuffer()
             
     p_draw(3, text_y-4, 1, 1, 1)
     i_draw(9, text_y, 1, 1, 0)
@@ -255,28 +195,76 @@ def draw_text():
     o_draw(16, text_y, 1, 0, 1)
     writing = False
     
-draw_text()
+#draw_text()
 draw_counter = 0
-
-#going to need double-buffering
 
 writing = False
 
 out_rows = rows
 
-    
+def draw_performance():
+    global writing
+    global rows
+
+    writing = True
+
+    start = time.ticks_us()
+
+    counter = random.randint(1, 7);
+
+    clearBuffer()
+
+    for j in range(32):
+        for i in range(32):
+            set_pixel(i, j, 1 + counter % 6)
+            counter += 1
+
+    end = time.ticks_us()
+    usecs = time.ticks_diff(end, start)
+    print(usecs / 1000.0)
+
+    writing = False
+
+def draw_test_pattern():
+    global writing
+    global rows
+
+    writing = True
+
+    clearBuffer()
+
+    for i in range(0,32):
+        # draw random selection of rows/colums using all colors
+        light_xy(i, 31, 0, 0, 1)
+        light_xy(i, 0, 0, 1, 0)
+        light_xy(i, 16, 0, 1, 1)
+        light_xy(0, i, 1, 0, 0)
+        light_xy(5, i, 1, 0, 1)
+        light_xy(15, i, 1, 1, 0)
+        light_xy(25, i, 1, 1, 1)
+        light_xy(30, i, 1, 0, 0)
+
+    writing = False
+
 while(True):
 
     sm_row.put(counter)
 
-    for i in range(blocks_per_row):
-        sm_data.put(out_rows[counter][i])
+    # Write out 8 integers that hold 8 pixels worth of 3-bit RGB (two scanlines x four pixels)
+    baseIndex = counter * 8
+    for i in range(8):
+        val = frameBuffer[baseIndex + i]
+        sm_data.put(val)
+        #sm_data.put(out_rows[counter][i])
 
     counter = counter +1
     if (counter > 15):
         counter = 0
         if writing == False:
-            out_rows = rows.copy()
+
+            # perform our double buffering
+            tempBuffer = frameBuffer
+            frameBuffer = drawBuffer
+            drawBuffer = tempBuffer
             _thread.start_new_thread(draw_text, ())
-    
 
